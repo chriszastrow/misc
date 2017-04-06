@@ -1,10 +1,11 @@
-from urllib.request import urlopen
 import re
 import numpy
+from urllib.request import urlopen
 from lxml import html
 import pandas as pd
 from bokeh.plotting import figure
 from bokeh.embed import components
+
 
 def run():
     '''Declare objects, establish source criteria, initiate data collection.'''
@@ -21,7 +22,7 @@ def run():
 
 
 def data_collect(source, data):
-    '''Retreive the various source data.'''
+    '''Retreive the source data.'''
     while source['step'] < len(source['mod']):
         source_object = urlopen(source['base'] + source['core']
                                 + str(source['mod'][source['step']])).read()
@@ -36,7 +37,6 @@ def data_process(data, soup):
     #### Parse with cssselect of find_all with ('tag chain here'):
     for element in soup.cssselect('td span'):
         if counter < 8:
-            #data['cloud'].append(str(element)[6:-7])
             data['cloud'].append(str(element.text))
         else:
             # Regex; strip superfluous characters & cast elements as int:
@@ -63,27 +63,26 @@ def data_process(data, soup):
                 data['dew'].append(element)
             else:
                 print('Unexpected overflow in tag cascade.')
+                break
         counter += 1
 
 
 def data_output(data):
+    '''Bokeh chart code generation & export to file.'''
     pdframe = pd.DataFrame(data)
-    # print(pdframe)
     xaxis = numpy.linspace(0, 72, len(pdframe))
 
     p = figure(plot_width=500, plot_height=300, sizing_mode='scale_width',
                background_fill_color='#fdfdfd', title='Key: Yellow=Temp, Blue=Wind, Black=Clouds')
-
     p.vbar(xaxis, width=1, bottom=0, top=pdframe['cover'], color='#222333')
     p.line(xaxis, (pdframe['wind'] * 4), line_color='#2244cc', line_width=3)
     p.quad((xaxis - 0.45), (xaxis + 0.45), (pdframe['real'] + 1), (pdframe['real'] - 1), line_color='#333333', color="#dde999")
-
     p.xgrid[0].ticker.desired_num_ticks = 24
     p.toolbar.logo = None
     p.toolbar_location = None
 
     script, div = components(p)
-    file_output = open('/output.html', 'r+')
+    file_output = open('/path/filename.html', 'r+')
     file_output.truncate()
     file_output.write(script)
     file_output.write(div)
