@@ -6,8 +6,8 @@ botPerformRole: function(){
         mod.bot[bot.memory.role](bot)
     }
 },
-activebotCount: function(){
-    //Removes expired bots & updates bot role counters:
+activebBotCount: function(){
+    //Remove expired bots & updates bot role counter:
     for(let role in mod.bot.botQuota){
         M.C[role] = 0
     }
@@ -24,7 +24,7 @@ repairManager: function(){
     //Make lists of structures below hit thresholds:
     M.L.repairRoad = mod.mgmt.listFix(M.S.road,M.V.minHitsRoad);
     M.L.repairContainer = mod.mgmt.listFix(M.S.container,M.V.minHitsContainer);
-    //This array defines the repair priority of structure type lists.
+    //This array defines the repair priority of structure type lists:
     M.L.constructionPriorityList = [M.L.repairContainer,M.L.repairRoad];
     //Iterate damaged structure lists by priority, determine priority target:
     for(let i=0;i<M.L.constructionPriorityList.length;i++){
@@ -48,7 +48,8 @@ findClosestToMe: function(bot,listName){
         return listName
     }
 },
-listFix: function(inputList,hitLimit){//Remove nulls & sort by lowest Hits:
+listFix: function(inputList,hitLimit){
+    //Remove nulls & sort by lowest hits:
     if(typeof hitLimit === 'undefined'){
         hitLimit = 100000001
     }
