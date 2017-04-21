@@ -69,12 +69,14 @@ listExtension: function(bot){
         }
     });
 },
-buildSitePriority: function(){//Filter construction sites, establish #1 priority:
+buildSitePriority: function(){
+    //Filter construction sites, establish #1 priority:
     let priorityConstruction = JSON.parse(RawMemory.segments[0]);
     let tempList = Game.flags['Flag1'].room.find(FIND_MY_CONSTRUCTION_SITES);
     let i = 0;
     prioritize();
-    function prioritize(){//recursive list filtering:
+    function prioritize(){
+        //recursive list filtering:
         let makeList = tempList.filter(function(element){
             return element.structureType == priorityConstruction[i]
         });
