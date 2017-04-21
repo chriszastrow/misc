@@ -58,16 +58,14 @@ listFix: function(inputList,hitLimit){//Remove nulls & sort by lowest Hits:
             tempList.push(inputList[i])
         }
     }
-    result = tempList.sort(function(a,b){
-        return a.hits - b.hits
-    });
-	return result;
+    result = tempList.sort(function(a,b){return a.hits - b.hits});
+    return result;
 },
 listExtension: function(bot){
     M.L.emptyExtention =  Game.flags['Flag1'].room.find(FIND_STRUCTURES,{
         filter: (e) => { 
-        return (e.hits > 0 && e.energy != e.energyCapacity 
-        && e.structureType == STRUCTURE_EXTENSION)
+            return (e.hits > 0 && e.energy != e.energyCapacity 
+            && e.structureType == STRUCTURE_EXTENSION)
         }
     });
 },
