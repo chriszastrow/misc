@@ -1,12 +1,12 @@
 var mgmt = {
 botPerformRole: function(){
-    //Define each 'bot' and direct toward role function:
+    //Define each bot and direct toward role function:
     for(let key in Game.bots){
         let bot = Game.bots[key];
         mod.bot[bot.memory.role](bot)
     }
 },
-activebBotCount: function(){
+activeBotCount: function(){
     //Remove expired bots & updates bot role counter:
     for(let role in mod.bot.botQuota){
         M.C[role] = 0
