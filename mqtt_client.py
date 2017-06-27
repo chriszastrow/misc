@@ -1,5 +1,5 @@
-'''This is my MQTT Paho test client used for basic interaction with a Mosquitto broker'''
-from __future__ import print_function #fix for parens
+'''This is my MQTT Paho client used for basic interaction with a Mosquitto broker server.'''
+from __future__ import print_function #fix for 2/3 print
 import sys
 import time
 import paho.mqtt.client as mqtt
@@ -45,6 +45,7 @@ def do_subscribe(subscribe_target):
 
 
 def on_subscribe(client, userdata, mid, granted_qos):
+    #TODO: increment target & qos when multiple subscribe targets:
     print("alert: Subscribed to ", subscribe_target[0][0], " with  QOS ", granted_qos[0])
 
 
@@ -90,7 +91,7 @@ def init():
 
 
 #Init global variables:
-connection_target = "iot.eclipse.org"
+connection_target = "test.mosquitto.org" #"iot.eclipse.org"
 client_instance = mqtt.Client("MyClient", clean_session=True, userdata=None, \
     protocol=mqtt.MQTTv311, transport="tcp") #clean_session clears subscriptions on disconnect.
 subscription_payload = [] #Subscription records collected in list.
