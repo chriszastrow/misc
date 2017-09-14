@@ -10,6 +10,10 @@ linkTransfer: function(){
         if($sys.link[1].energy < 180){
             $sys.link[0].transferEnergy($sys.link[1])}}
 },
+// emergencyReboot: function(){
+//     //Failsafe reboot response unit for catastrophic energy shortfall:
+//     $sys.spawn[0].createCreep([WORK,CARRY,CARRY,CARRY,MOVE],undefined,{role:'botClassReboot',home:undefined});
+// },
 ////////////////////////////////////////////////////////////////////////////////
 ////////////// BOT MANAGEMENT FUNCTIONS ////////////////////////////////////////
 botPerformRole: function(){
@@ -62,11 +66,11 @@ botConstructor: function(){
                     $mod.mgmt.botRecipe[role]()}}}}
 },
 repairManager: function(){
+    Memory.r0.repairTarget = [];
     //Iterate damaged structure lists by priority, determine priority target:
     for(let i=0;i<$var.constructionPriorityList.length;i++){
         for(let x=0;x<$var.constructionPriorityList[i].length;x++){
             if($var.constructionPriorityList[i][x] != null){
-                console.log('testing123' + Memory.r0.repairTarget);
                 //DO NOT REMOVE repairTarget from Memory.r0, it will break towers:
                 //TODO: Verify that repairTarget is being properly cleared once handled.
                 Memory.r0.repairTarget = $var.constructionPriorityList[i][x];
@@ -131,7 +135,7 @@ upgradeBlockade: function(bot,inputList){
 towerInit: function(){
     //Tower settings & manual primary target override control point:
     $var.towerPrimaryTarget = $id('58b38ef2405e57715a551f41');//Primary HOSTILE target override.
-    $var.towerMaxRange = 7;//Will not fire on HOSTILE target beyond this range.
+    $var.towerMaxRange = 6;//Will not fire on HOSTILE target beyond this range.
     $var.towerMinEnergy = 800;//Will not do repair/upgrade actions when energy reserve below threshold.
     $mod.mgmt.towerLogic();
     //TODO: Primary repair/upgrade target override.
@@ -142,34 +146,31 @@ towerLogic: function(){
     //Check that towers exist & run logic for each:
     if($sys.tower){
         for(let i=0;i<$sys.tower.length;i++){
+            let closestHostile = $sys.tower[i].pos.findClosestByRange(FIND_HOSTILE_CREEPS);
             //Override to ensure engagment of existing towerPrimaryTarget:
             if($var.towerPrimaryTarget != null){
                 $sys.tower[i].attack($var.towerPrimaryTarget)}
-            else{
-                //If no towerPrimaryTarget is set, conduct automated target acquisition:
-                let targetEngage = $mod.mgmt.towerDefense(i);
-                //If no hostile target in range, continue to conduct infrastructure operations:
-                if($sys.tower[i].energy > $var.towerMinEnergy && (!targetEngage)){
-                    $mod.mgmt.towerOperations(i);}}}}
+            //Wait until target is in range before engaging:
+            else if($sys.tower[i].pos.getRangeTo(closestHostile) < $var.towerMaxRange){
+                $sys.tower[i].attack(closestHostile)}
+            //If no hostile target in range, continue to conduct infrastructure operations:
+            else if($sys.tower[i].energy > $var.towerMinEnergy){
+                $mod.mgmt.towerOperations(i)}}}
     //TODO: Activation trigger & cool-down for war-time conditions identification.
     //TODO: Decrease cpu overhead by running intermittently until war-time.
-},
-towerDefense: function(i){
-    //Wait until target is in range before engaging:
-    let closestHostile = $sys.tower[i].pos.findClosestByRange(FIND_HOSTILE_CREEPS);
-    if($sys.tower[i].pos.getRangeTo(closestHostile) < $var.towerMaxRange){
-        $sys.tower[i].attack(closestHostile)}
 },
 towerOperations: function(i){
     //Infrastructure repair & upgrade operations:
     if(Memory.r0.repairTarget){
         $sys.tower[i].repair($id(Memory.r0.repairTarget.id))}
-    else if($var.wallPrimary[i]){
-        for(i=0;i<$var.wallPrimary.length;i++){
-            $sys.tower[i].repair($var.wallPrimary[i])}}
+    else if($var.wallPrimary.length){
+        //sort wall repair targets by lowest hits:
+        let sortedWallList = $mod.mgmt.listFix($var.wallPrimary,$var.wallPrimaryLimit);
+        if(sortedWallList[0]){
+            if(sortedWallList[0].hits < $var.wallPrimaryLimit){
+                $sys.tower[i].repair(sortedWallList[0])}}}
     //TODO: Target list use key:value (I.E. ObjectId:'10000' ...instead of array) to
     //...individualize each targets appropriate hit level.
-    //TODO: verify that priority wall targets are cycling through array
 },
 ////////////////////////////////////////////////////////////////////////////////
 /////  BACKEND ARCHITECTURE STUFF  /////////////////////////////////////////////
@@ -218,13 +219,14 @@ global.$sys = {};
 $var.minHitsRoad = 4200;
 $var.minHitsContainer = 88000;
 //Walls & ramparts will not be upgraded beyond these threshold limits:
-$var.rampartPrimaryLimit = 1333888;
-$var.wallPrimaryLimit = 25888;
+$var.rampartPrimaryLimit = 1444888;
+$var.wallPrimaryLimit = 3000888;
 $var.wallPrimary = [
-    //TODO: These targets are not cycling, they get stuck after one...
-//    $id('58af46b74fcb9e233fa22cab'),
-    $id('58af46bb0962b42619256b7b'),
-    $id('58af46bfff01d504182ff720'),
+    $id('58ac6cf506731f024d8540b4'),
+    $id('58ac6d0999072511ff45d479'),
+    $id('58af1ba11092d4e713f0840e'),
+    $id('58ac6d3e6c8cb9020f23e141'),
+    $id('593f2ad1dd6f38d8534a0a59'),
     ];
 $var.wallSecondaryLimit = 888;
 $var.wallSecondary = [
@@ -239,7 +241,6 @@ $var.priorityConstruction = [
     STRUCTURE_LINK,
     STRUCTURE_PORTAL,
     STRUCTURE_RAMPART,
-    //STRUCTURE_CONTROLLER,
     STRUCTURE_OBSERVER,
     STRUCTURE_POWER_BANK,
     STRUCTURE_POWER_SPAWN,
@@ -261,12 +262,12 @@ botClassUpkeep: function(bot){
     if(bot.carry.energy > 0){
         for(i=0;i<$sys.tower.length;i++){
             if($sys.tower[i].energy < 850){
-                bot.memory.action = 'transfer';bot.memory.target = $sys.tower[i].id}
-            else{
-                //Upgrade any ramparts to system defined minimum HP:
-                let tempList = $mod.mgmt.upgradeRampart(bot);
-                if(tempList != undefined){
-                    bot.memory.action = 'repair';bot.memory.target = tempList[0].id}}}}
+                bot.memory.action = 'transfer';bot.memory.target = $sys.tower[i].id}}}
+            // else{
+            //     //Upgrade any ramparts to system defined minimum HP:
+            //     let tempList = $mod.mgmt.upgradeRampart(bot);
+            //     if(tempList != undefined){
+            //         bot.memory.action = 'repair';bot.memory.target = tempList[0].id}}}}
 },
 botClassRunner: function(bot){
     if($.time % 4 == 0){$mod.mgmt.listExtension(bot)}
@@ -296,7 +297,7 @@ botClassTransporter: function(bot){
 },
 botClassBuilder: function(bot){
     if(bot.carry.energy == 0){
-            bot.memory.action = 'withdraw';bot.memory.target = $sys.storage[0].id}
+            bot.memory.action = 'withdraw';bot.memory.target = $sys.link[1].id}
     if(bot.carry.energy > 0){
         if($var.buildPriority){
             bot.memory.action = 'build';bot.memory.target = $var.buildPriority[0].id}}
@@ -313,41 +314,49 @@ botClassHarvZero: function(bot){
 botClassHarvOne: function(bot){
     bot.memory.action = 'harvest';bot.memory.target = $sys.source[1].id
 },
+// botClassReboot: function(bot){
+//     if($.time % 4 == 0){$mod.mgmt.listExtension(bot)}
+//     if(bot.carry.energy == 0){
+//         bot.memory.action = 'harvest';bot.memory.target = $sys.source[0].id}
+//     if(bot.carry.energy > 0){
+//         if(Memory.r0.emptyExtension[0]){
+//             bot.memory.action = 'transfer';bot.memory.target = Memory.r0.emptyExtension[0].id}
+//         else{bot.memory.action = 'transfer';bot.memory.target = $sys.spawn[0].id}}
+// },
 ////////////////////////////////////////////////////////////////////////////////
 /////  BOT CLASS RECIPES & QUOTAS  /////////////////////////////////////////////
 //Desired bot quantity by role:
 botQuota:{
-    botClassBuilder : 1,
-    botClassHarvZero : 1,
+    botClassBuilder : 2,
+    botClassHarvZero :1,
     botClassHarvOne : 1,
     botClassTransporter : 1,
     botClassRunner : 1,
     botClassUpkeep : 1,
-    botClassFeeder : 2,
+    botClassFeeder : 1,
 },
 botRecipe:{
 botClassBuilder: function(){$sys.spawn[0].createCreep(
-    [WORK,CARRY,CARRY,CARRY,CARRY,MOVE],
+    [WORK,WORK,CARRY,CARRY,MOVE],
     undefined,{role:'botClassBuilder',home:undefined})},
 botClassTransporter: function(){$sys.spawn[0].createCreep(
     [WORK,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,CARRY,MOVE],
     undefined,{role:'botClassTransporter',home:undefined})},
 botClassHarvZero: function(){$sys.spawn[0].createCreep(
-//    [WORK,WORK,MOVE],
     [WORK,WORK,WORK,WORK,WORK,WORK,MOVE],
     undefined,{role:'botClassHarvZero',home:undefined})},
 botClassHarvOne: function(){$sys.spawn[0].createCreep(
     [WORK,WORK,WORK,WORK,WORK,WORK,MOVE],
     undefined,{role:'botClassHarvOne',home:undefined})},
 botClassRunner: function(){$sys.spawn[0].createCreep(
-//    [WORK,CARRY,CARRY,MOVE],//TODO: Failsafe reboot procedure after catastrophic energy shortfall.
+    //[CARRY,CARRY,MOVE,CARRY,CARRY,MOVE],
     [WORK,CARRY,CARRY,CARRY,CARRY,MOVE,MOVE],
     undefined,{role:'botClassRunner',home:undefined})},
 botClassUpkeep: function(){$sys.spawn[0].createCreep(
-    [WORK,CARRY,CARRY,MOVE],
+    [WORK,CARRY,CARRY,MOVE,MOVE,MOVE],
     undefined,{role:'botClassUpkeep',home:undefined})},
 botClassFeeder: function(){$sys.spawn[0].createCreep(
-    [WORK,WORK,WORK,WORK,WORK,WORK,WORK,WORK,WORK,WORK,CARRY,MOVE],
+    [WORK,CARRY,MOVE],
     undefined,{role:'botClassFeeder',home:undefined})},
 },
 }
