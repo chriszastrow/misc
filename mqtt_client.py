@@ -1,4 +1,4 @@
-'''This is my MQTT Paho client used for basic interaction with a Mosquitto broker server.'''
+'''MQTT Paho client used for basic interaction with a Mosquitto broker server.'''
 from __future__ import print_function #fix for 2/3 print
 import sys
 import time
