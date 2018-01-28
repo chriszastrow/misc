@@ -1,4 +1,4 @@
-//C# windows console program by Chris Zastrow.
+//C# windows console program.
 //User input creates & modifies customer account & order records.
 //Records are retrived & updated in a MySQL database where they are stored.
 using System;
